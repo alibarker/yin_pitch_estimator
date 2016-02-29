@@ -17,13 +17,12 @@ window_length = 50/1000 * Fs;
 jump_size = floor(0.5 * window_length);
 num_frames = floor((file_length - window_length - 1)/jump_size);
 
-max_tau = floor(1/20 * Fs);
+max_tau = floor(1/65 * Fs);
 threshold = floor(1/1500 * Fs);
 
 frame_index = [0:1:num_frames -1] * jump_size + 1;
 n = [0:file_length - 1];
-
-pitch = nan(num_frames, 1);
+    
 
 d_matrix = nan(max_tau, num_frames);
 
@@ -46,13 +45,30 @@ end
 
 %% Find Pitch
 
-for tau = 1: max_tau
-    if tau > threshold && d_prime(tau) < 0.7 && d_prime(tau) < d_prime(tau - 1) && d_prime(tau) < d_prime(tau + 1);
-        pitch(frame) = Fs/tau;
-        break;
-    end
-end
+period = nan(num_frames, 1);
+pitch = nan(num_frames, 1);
+period_interpolated = nan(num_frames, 1);
+pitch_interpolated = nan(num_frames, 1);
 
+for frame = 1: num_frames
+    for tau = 1: max_tau - 1
+        if tau > threshold && d_prime_matrix(tau, frame) < 0.3 && d_prime_matrix(tau, frame) < d_prime_matrix(tau - 1, frame) && d_prime_matrix(tau, frame) < d_prime_matrix(tau + 1, frame);
+            period(frame) = tau;
+            pitch(frame) = Fs/tau;
+            break;
+        end
+    end
     
-    plot(d_prime);
+    % interpolate
     
+    alpha = mag2db(d_prime_matrix(tau - 1, frame));
+    beta = mag2db(d_prime_matrix(tau, frame));
+    gamma = mag2db(d_prime_matrix(tau + 1, frame));
+    
+    p = 0.5 * (alpha - gamma)/(alpha - 2 * beta  + gamma);
+    
+    period_interpolated(frame) = period(frame) + p;
+
+    pitch_interpolated(frame) = Fs/period_interpolated(frame);
+    
+end
